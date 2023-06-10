@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating a first EC2 Instance with CloudFormation
+Resources:
+    karthikeyaEC2Instance1:
+      Type: AWS::EC2::Instance
+      Properties:
+        AvailabilityZone: us-east-2b
+        ImageId: ami-092b51d9008adea15
+        InstanceType: t2.micro
+        KeyName: Karthikeya
+
+    karthikeyaEC2Instance2:
+      Type: AWS::EC2::Instance
+      Properties:
+        AvailabilityZone: us-east-2b
+        ImageId: ami-092b51d9008adea15
+        InstanceType: t2.micro
+        KeyName: Karthikeya
+
+    MyEBSVolume:
+      Type: AWS::EC2::Volume
+      Properties:
+        AvailabilityZone: us-east-2b
+        Size: 20
+        VolumeType: gp2
+    
+    MyEBSVolume2:
+      Type: AWS::EC2::Volume
+      Properties:
+        AvailabilityZone: us-east-2b
+        Size: 20
+        VolumeType: gp2
+
+    MyVolumeAttachment:
+      Type: AWS::EC2::VolumeAttachment
+      Properties: 
+        Device: "/dev/sdh"
+        InstanceId: !Ref karthikeyaEC2Instance1
+        VolumeId: !Ref MyEBSVolume
+
+    MyVolumeAttachment2:
+      Type: AWS::EC2::VolumeAttachment
+      Properties: 
+        Device: "/dev/sdh"
+        InstanceId: !Ref karthikeyaEC2Instance2
+        VolumeId: !Ref MyEBSVolume2
+
+    karthikeyaS3Bucket:
+      Type: 'AWS::S3::Bucket'
+      Properties:
+        BucketName: "karthikeya-devxpace-s3bucket"
+    karthikeyaS3Role:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: karthikeya-s3-access-policy
+        AssumeRolePolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - s3.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        Description: Role to provide access to S3
+        Policies:
+          - PolicyName: karthikeya-read-write-s3-policy
+            PolicyDocument:
+              Version: 2012-10-17
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - s3:GetBucketLocation
+                    - s3:ListAllMyBuckets
+                  Resource: "*"
+                - Effect: Allow
+                  Action:
+                    - s3:ListBucket
+                  Resource:
+                    - arn:aws:s3:::test
+                - Effect: Allow
+                  Action:
+                    - s3:PutObject
+                    - s3:GetObject
+                    - s3:DeleteObject
+                  Resource:
+                    - !Sub arn:aws:s3:::${karthikeyaS3Bucket}
+                    - !Sub arn:aws:s3:::${karthikeyaS3Bucket}/*
+    MyLoadBalancer:
+      Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+      Properties:
+        Name: devxlb
+        Scheme: internet-facing
+        Subnets: 
+          - subnet-0ab853ee9f837e710
+          - subnet-055d11c59760690c6
+          - subnet-04cae91711725e6ba
+        Type: network
+
+    MyTargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties: 
+        Name: devxtg
+        Port: 80
+        Protocol: TCP
+        Targets: 
+          - Id: !Ref karthikeyaEC2Instance1
+            Port: 80
+          - Id: !Ref karthikeyaEC2Instance2
+            Port: 80
+        VpcId: vpc-0a2b8146fe3543193
+      
+    MyListenerRule:
+      Type: AWS::ElasticLoadBalancingV2::Listener
+      Properties: 
+        DefaultActions: 
+          - TargetGroupArn: !Ref  MyTargetGroup
+            Type: forward
+        LoadBalancerArn: !Ref MyLoadBalancer
+        Port: 80
+        Protocol: TCP
