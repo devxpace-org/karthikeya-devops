@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating a first Autoscaling Group with CloudFormation
+
+Resources:
+  KartLaunchTemplate:
+    Type: 'AWS::EC2::LaunchTemplate'
+    Properties:
+      LaunchTemplateName: KartLaunchTemplate
+      LaunchTemplateData:
+        ImageId: ami-092b51d9008adea15
+        InstanceType:  t2.micro
+        KeyName: jenkins
+
+  KartLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties: 
+      IpAddressType: ipv4
+      Name: auto1
+      Scheme: internet-facing
+      Subnets: 
+        - subnet-0ab853ee9f837e710 
+      Type: network
+
+  KartTargetGroup:
+      Type: AWS::ElasticLoadBalancingV2::TargetGroup
+      Properties: 
+        Name: KartTargetGroup
+        Port: 80
+        Protocol: TCP
+        VpcId: vpc-0a2b8146fe3543193    
+  
+  KartListener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref KartTargetGroup
+      LoadBalancerArn: !Ref KartLoadBalancer
+      Port: 80
+      Protocol: TCP     
+  
+  KartAutoscalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: KartAutoscalingGroup
+      AvailabilityZones: 
+        - us-east-2b
+      LaunchTemplate:
+        LaunchTemplateId: !Ref KartLaunchTemplate
+        Version: !GetAtt KartLaunchTemplate.LatestVersionNumber
+      TargetGroupARNs: 
+        - !Ref KartTargetGroup
+      MinSize: 1 
+      MaxSize: 10
+      DesiredCapacity: 2
